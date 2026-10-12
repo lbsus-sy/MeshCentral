@@ -230,9 +230,16 @@ function dynamic_config() {
         echo "Setting trustedProxy... - $TRUSTED_PROXY"
 
         sed -i 's/"_trustedProxy"/"trustedProxy"/' "$CONFIG_FILE"
-        jq --arg trusted_proxy "$TRUSTED_PROXY" \
-            '.settings.trustedProxy = $trusted_proxy' \
-            "$CONFIG_FILE" > temp_config.json && mv temp_config.json "$CONFIG_FILE"
+        if [[ "$TRUSTED_PROXY" == "all" ]] || [[ "$TRUSTED_PROXY" == "true" ]]; then
+            # Preserve the existing explicit trust-all compatibility switch.
+            jq --argjson trusted_proxy "true" \
+                '.settings.trustedProxy = $trusted_proxy' \
+                "$CONFIG_FILE" > temp_config.json && mv temp_config.json "$CONFIG_FILE"
+        else
+            jq --arg trusted_proxy "$TRUSTED_PROXY" \
+                '.settings.trustedProxy = $trusted_proxy' \
+                "$CONFIG_FILE" > temp_config.json && mv temp_config.json "$CONFIG_FILE"
+        fi
     else
         echo "TRUSTED_PROXY is empty; leaving the setting disabled."
         sed -i 's/"trustedProxy":/"_trustedProxy":/g' "$CONFIG_FILE"
