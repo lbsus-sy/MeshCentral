@@ -12,3 +12,8 @@ docs/
 *.md
 examples
 tests
+
+# Keep local deployment secrets and generated volume backups out of build context.
+**/.env
+customization/backups/
+**/*.tar.gz
