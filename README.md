@@ -16,7 +16,7 @@ This repository is a customized fork of [MeshCentral](https://github.com/Ylianst
 
 ## Windows EXE builds
 
-GitHub Actions builds two unsigned, self-contained Windows x64 GUI artifacts: `LakersMeshAgentInstaller.exe` and `LakersDesktopTools.exe`. Open the repository's Actions tab, select the latest successful **Windows GUI client packaging** workflow run, and download the artifacts. Artifacts expire after 14 days. They are not signed by this repository, so Windows may show an unknown-publisher warning.
+GitHub Actions is configured to build two unsigned, self-contained Windows x64 GUI artifacts: `LakersMeshAgentInstaller.exe` and `LakersDesktopTools.exe`. After the **Windows GUI client packaging** workflow completes successfully, open the repository's Actions tab, select that run, and download the artifacts. The latest observed run is still queued, so artifacts are not confirmed available yet. Artifacts expire after 14 days. They are not signed by this repository, so Windows may show an unknown-publisher warning.
 
 The installer requests UAC elevation, shows a consent screen, and expects the Windows agent EXE downloaded from your own trusted MeshCentral server. It does not bundle a universal agent because generated agents are configured for their server. Verify that the device appears in the server UI after installation.
 
