@@ -16,9 +16,9 @@ services:
       HOSTNAME: ${MESH_HOSTNAME:?Set MESH_HOSTNAME in customization/deploy/.env}
       PORT: "443"
       REDIR_PORT: "80"
-      ALLOW_NEW_ACCOUNTS: ${MESH_ALLOW_NEW_ACCOUNTS:-false}
-      TLS_OFFLOAD: ${MESH_TLS_OFFLOAD:-false}
-      TRUSTED_PROXY: ${MESH_TRUSTED_PROXY:-}
+      ALLOW_NEW_ACCOUNTS: "${MESH_ALLOW_NEW_ACCOUNTS:-false}"
+      TLS_OFFLOAD: "${MESH_TLS_OFFLOAD:-false}"
+      TRUSTED_PROXY: "${MESH_TRUSTED_PROXY:-}"
       ALLOW_PLUGINS: "false"
       REGEN_SESSIONKEY: "false"
       WEBRTC: "false"
@@ -31,7 +31,7 @@ services:
       - ../branding/web:/opt/meshcentral/meshcentral-web:ro
       - meshcentral-backups:/opt/meshcentral/meshcentral-backups
     healthcheck:
-      test: ["CMD", "curl", "-k", "--fail", "https://localhost:443/health.ashx"]
+      test: ["CMD-SHELL", "if [ \"$TLS_OFFLOAD\" = \"true\" ]; then curl --fail http://localhost:443/health.ashx; else curl -k --fail https://localhost:443/health.ashx; fi"]
       interval: 30s
       timeout: 8s
       start_period: 30s
