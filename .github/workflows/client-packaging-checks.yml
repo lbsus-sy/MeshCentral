@@ -1,0 +1,23 @@
+name: Client packaging placeholder checks
+
+on:
+  pull_request:
+    paths:
+      - "customization/client/**"
+      - ".github/workflows/client-packaging-checks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  docs-and-script-syntax:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate packaging design files
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "customization/client/README.md")) {
+            throw "Missing Windows client packaging design notes."
+          }
+          Get-Content "customization/client/README.md" | Out-Null
