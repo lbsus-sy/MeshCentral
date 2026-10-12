@@ -134,8 +134,7 @@ internal sealed class InstallerForm : Form
             Multiselect = false
         };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
-        if (!string.Equals(Path.GetFileName(dialog.FileName).StartsWith("MeshAgent", StringComparison.OrdinalIgnoreCase) ? "MeshAgent" : "",
-                "MeshAgent", StringComparison.Ordinal))
+        if (!Path.GetFileName(dialog.FileName).StartsWith("MeshAgent", StringComparison.OrdinalIgnoreCase))
         {
             MessageBox.Show(this, "Select the installed MeshAgent executable.", "Agent required",
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
