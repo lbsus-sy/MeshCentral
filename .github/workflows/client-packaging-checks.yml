@@ -9,6 +9,7 @@ on:
   push:
     branches:
       - master
+      - "custom/**"
     paths:
       - "customization/client/**"
       - "customization/tools/**"
@@ -23,13 +24,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install .NET 8 SDK
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-      - name: Build self-contained GUI installer
+      - name: Build generic GUI wrapper (agent payload is intentionally absent)
         run: dotnet publish customization/client/LakersAgentInstaller.csproj -c Release -r win-x64 --self-contained true -o artifacts/installer
-      - name: Build self-contained desktop tools
+      - name: Build desktop tools
         run: dotnet publish customization/tools/LakersDesktopTools.csproj -c Release -r win-x64 --self-contained true -o artifacts/desktop-tools
       - name: Validate executables
         shell: pwsh
@@ -38,20 +38,16 @@ jobs:
             $exe = Get-Item $path
             if ($exe.Length -lt 1000000) { throw "$path is unexpectedly small." }
             $stream = [System.IO.File]::OpenRead($exe.FullName)
-            try {
-              if ($stream.ReadByte() -ne 0x4D -or $stream.ReadByte() -ne 0x5A) { throw "$path is not a Windows PE executable." }
-            } finally { $stream.Dispose() }
+            try { if ($stream.ReadByte() -ne 0x4D -or $stream.ReadByte() -ne 0x5A) { throw "$path is not a Windows PE executable." } } finally { $stream.Dispose() }
             Write-Host "Built $($exe.Name), $($exe.Length) bytes. CI artifacts are unsigned."
           }
-      - name: Upload agent installer
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: LakersMeshAgentInstaller-win-x64
+          name: LakersMeshAgentInstaller-wrapper-win-x64
           path: artifacts/installer/LakersMeshAgentInstaller.exe
           if-no-files-found: error
           retention-days: 14
-      - name: Upload desktop tools
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: LakersDesktopTools-win-x64
           path: artifacts/desktop-tools/LakersDesktopTools.exe
