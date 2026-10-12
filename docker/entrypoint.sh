@@ -245,17 +245,24 @@ function dynamic_config() {
         sed -i 's/"trustedProxy":/"_trustedProxy":/g' "$CONFIG_FILE"
     fi
 
-    # tlsOffload (JSON boolean)
+    # tlsOffload: accept boolean values or an explicit trusted proxy address.
     TLS_OFFLOAD=${TLS_OFFLOAD,,}
     if [[ "$TLS_OFFLOAD" =~ ^(true|false)$ ]]; then
-        echo "Setting tlsOffload... - $TLS_OFFLOAD"
+        echo "Setting tlsOffload boolean... - $TLS_OFFLOAD"
 
         sed -i 's/"_tlsOffload"/"tlsOffload"/' "$CONFIG_FILE"
         jq --argjson tls_offload "$TLS_OFFLOAD" \
             '.settings.tlsOffload = $tls_offload' \
             "$CONFIG_FILE" > temp_config.json && mv temp_config.json "$CONFIG_FILE"
+    elif [[ -n "$TLS_OFFLOAD" ]]; then
+        echo "Setting tlsOffload trusted proxy address... - $TLS_OFFLOAD"
+
+        sed -i 's/"_tlsOffload"/"tlsOffload"/' "$CONFIG_FILE"
+        jq --arg tls_offload "$TLS_OFFLOAD" \
+            '.settings.tlsOffload = $tls_offload' \
+            "$CONFIG_FILE" > temp_config.json && mv temp_config.json "$CONFIG_FILE"
     else
-        echo "Invalid or no TLS_OFFLOAD boolean given, commenting out so default applies... Value(s) given: ${TLS_OFFLOAD:-empty}"
+        echo "TLS_OFFLOAD is empty; leaving the setting disabled."
         sed -i 's/"tlsOffload":/"_tlsOffload":/g' "$CONFIG_FILE"
     fi
 
