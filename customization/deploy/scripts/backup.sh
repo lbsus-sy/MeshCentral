@@ -18,7 +18,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-container_id="$(docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" ps -q meshcentral)"
+container_id="$(docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" ps -a -q meshcentral)"
 if [[ -z "$container_id" ]]; then
   echo "Error: MeshCentral container not found. Start the stack once before backing it up." >&2
   exit 1
@@ -49,8 +49,8 @@ while IFS= read -r vol; do
   [[ -z "$vol" ]] && continue
   actual="$(docker volume ls --filter "label=com.docker.compose.project=$project_name" --filter "label=com.docker.compose.volume=$vol" --format '{{.Name}}' | head -n1 || true)"
   if [[ -z "$actual" ]]; then
-    echo "Warning: Compose volume '$vol' for project '$project_name' not found; skipping." >&2
-    continue
+    echo "Error: Compose volume '$vol' for project '$project_name' not found; aborting to avoid a partial backup." >&2
+    exit 1
   fi
   mkdir -p "$tmp/$vol"
   docker run --rm -v "$actual:/source:ro" -v "$tmp/$vol:/dest" alpine:3.24 sh -ec 'cp -a /source/. /dest/'
