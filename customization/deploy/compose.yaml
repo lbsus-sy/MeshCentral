@@ -16,21 +16,20 @@ services:
       PORT: "443"
       REDIR_PORT: "80"
       ALLOW_NEW_ACCOUNTS: "${MESH_ALLOW_NEW_ACCOUNTS:-false}"
-      TLS_OFFLOAD: "${MESH_TLS_OFFLOAD:-false}"
-      TRUSTED_PROXY: "${MESH_TRUSTED_PROXY:-}"
+      TLS_OFFLOAD: "true"
+      TRUSTED_PROXY: "${MESH_TRUSTED_PROXY:-172.16.0.0/12}"
       ALLOW_PLUGINS: "false"
       REGEN_SESSIONKEY: "false"
       WEBRTC: "false"
-    ports:
-      - "${MESH_HTTPS_PORT:-443}:443"
-      - "${MESH_HTTP_PORT:-80}:80"
+    expose:
+      - "443"
     volumes:
       - meshcentral-data:/opt/meshcentral/meshcentral-data
       - meshcentral-files:/opt/meshcentral/meshcentral-files
       - ../branding/web:/opt/meshcentral/meshcentral-web:ro
       - meshcentral-backups:/opt/meshcentral/meshcentral-backups
     healthcheck:
-      test: ["CMD-SHELL", "if [ \"$$TLS_OFFLOAD\" = \"false\" ] || [ -z \"$$TLS_OFFLOAD\" ]; then curl -k --fail https://localhost:443/health.ashx; else curl --fail http://localhost:443/health.ashx; fi"]
+      test: ["CMD-SHELL", "curl --fail http://localhost:443/health.ashx"]
       interval: 30s
       timeout: 8s
       start_period: 30s
@@ -39,7 +38,28 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      meshcentral:
+        condition: service_started
+    environment:
+      MESH_HOSTNAME: ${MESH_HOSTNAME:?Set MESH_HOSTNAME in customization/deploy/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    security_opt:
+      - no-new-privileges:true
+
 volumes:
   meshcentral-data:
   meshcentral-files:
   meshcentral-backups:
+  caddy-data:
+  caddy-config:
