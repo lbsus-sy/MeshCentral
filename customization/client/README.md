@@ -18,9 +18,9 @@ The resulting `LakersMeshAgentInstaller.exe` is a single-file, self-contained x6
 2. Run `LakersMeshAgentInstaller.exe`; approve UAC only if you intend to install a persistent remote-management service.
 3. Select the generated `MeshAgent*.exe`, check the authorization/trust statement, and confirm installation.
 4. Verify the device appears in the intended MeshCentral server. The installer records a local log at `%ProgramData%\LakersMeshCentral\installer.log`.
-5. Use the server's documented agent-uninstall function or run the generated agent's supported full-uninstall procedure from an elevated terminal to remove it.
+5. To remove an agent, reopen the GUI installer, choose **Uninstall agent…**, select the installed `MeshAgent*.exe`, and confirm. The wrapper runs the agent's supported `-fulluninstall` command and records the result in the same local log. Verify the service is removed and the device disconnects.
 
-The wrapper runs the MeshCentral Windows agent's `-fullinstall` command. It does not silently download code, hide the service, disable security software, or suppress the UAC prompt. The user sees the installer UI and a separate confirmation before service installation. A successful process exit is not proof that the agent has connected; verify the device in the server UI.
+The wrapper runs the MeshCentral Windows agent's `-fullinstall` command to install and `-fulluninstall` to remove it. It does not silently download code, hide the service, disable security software, or suppress the UAC prompt. The user sees the installer UI and a separate confirmation before service installation. A successful process exit is not proof that the agent has connected; verify the device in the server UI.
 
 ## Security and consent disclaimer
 
