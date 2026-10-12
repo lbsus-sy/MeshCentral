@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Drawing;
 using System.Security.Cryptography;
 using System.Text;
+using System.Windows.Forms;
 
 namespace LakersMeshAgentInstaller;
 
@@ -37,7 +39,6 @@ internal sealed class InstallerForm : Form
         Size = new Size(760, 360);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
-        ShowIcon = true;
 
         var heading = new Label
         {
@@ -168,7 +169,7 @@ internal sealed class InstallerForm : Form
 
             if (process.ExitCode == 0)
             {
-                _status.Text = "Agent installation command completed. Verify the device appears in your MeshCentral server.";
+                _status.Text = "Install command completed. Verify the device appears in your MeshCentral server.";
                 MessageBox.Show(this, $"Installation command completed. Confirm the device is online in your server.\n\nLog: {_logPath}",
                     "Installation complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
