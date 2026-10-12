@@ -309,7 +309,7 @@ function dynamic_config() {
         sed -i 's/"minify":/"_minify":/g' "$CONFIG_FILE"
     fi
 
-    cat "$CONFIG_FILE"
+    echo "Dynamic configuration applied; config contents omitted from logs."
 }
 
 function install_stylishui() {
