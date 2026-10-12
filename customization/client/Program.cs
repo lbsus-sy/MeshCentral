@@ -26,6 +26,7 @@ internal sealed class InstallerForm : Form
         MaximumSize = new Size(610, 0)
     };
     private readonly Button _install = new() { Text = "Install agent", AutoSize = true, Enabled = false };
+    private readonly Button _uninstall = new() { Text = "Uninstall agent…", AutoSize = true };
     private readonly Label _status = new() { AutoSize = true, Text = "No agent selected." };
     private readonly string _logPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
@@ -57,6 +58,7 @@ internal sealed class InstallerForm : Form
         browse.Click += (_, _) => ChooseAgent();
         _consent.CheckedChanged += (_, _) => RefreshInstallState();
         _install.Click += async (_, _) => await InstallAgentAsync();
+        _uninstall.Click += async (_, _) => await UninstallAgentAsync();
 
         var fileRow = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 2, AutoSize = true };
         fileRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -66,6 +68,7 @@ internal sealed class InstallerForm : Form
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, FlowDirection = FlowDirection.RightToLeft };
         buttons.Controls.Add(_install);
+        buttons.Controls.Add(_uninstall);
 
         var layout = new TableLayoutPanel
         {
@@ -119,6 +122,87 @@ internal sealed class InstallerForm : Form
     }
 
     private void RefreshInstallState() => _install.Enabled = _consent.Checked && File.Exists(_agentPath.Text);
+
+
+    private async Task UninstallAgentAsync()
+    {
+        using var dialog = new OpenFileDialog
+        {
+            Title = "Select the installed MeshCentral agent executable",
+            Filter = "MeshCentral agent executable (MeshAgent*.exe)|MeshAgent*.exe|Windows executables (*.exe)|*.exe",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        if (!string.Equals(Path.GetFileName(dialog.FileName).StartsWith("MeshAgent", StringComparison.OrdinalIgnoreCase) ? "MeshAgent" : "",
+                "MeshAgent", StringComparison.Ordinal))
+        {
+            MessageBox.Show(this, "Select the installed MeshAgent executable.", "Agent required",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        var answer = MessageBox.Show(this,
+            $"Remove the selected MeshCentral agent service?\n\nFile: {dialog.FileName}\n\nThis will disconnect the device from its management server.",
+            "Confirm agent removal", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+        if (answer != DialogResult.Yes) return;
+
+        _install.Enabled = false;
+        _uninstall.Enabled = false;
+        _status.Text = "Removing agent service…";
+        var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "LakersMeshCentral", "installer.log");
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+            var hash = await Task.Run(() => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(dialog.FileName))));
+            await File.AppendAllTextAsync(logPath,
+                $"\n[{DateTimeOffset.Now:O}] User={Environment.UserName}; Source={dialog.FileName}; SHA256={hash}; action=fulluninstall\n",
+                Encoding.UTF8);
+            var start = new ProcessStartInfo
+            {
+                FileName = dialog.FileName,
+                Arguments = "-fulluninstall",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WorkingDirectory = Path.GetDirectoryName(dialog.FileName)!
+            };
+            using var process = new Process { StartInfo = start };
+            if (!process.Start()) throw new InvalidOperationException("Windows could not start the selected agent.");
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            try { await process.WaitForExitAsync(timeout.Token); }
+            catch (OperationCanceledException)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                throw new TimeoutException("The uninstaller exceeded three minutes. Check the local log and service state.");
+            }
+            await File.AppendAllTextAsync(logPath,
+                $"exitCode={process.ExitCode}\nstdout:\n{await stdoutTask}\nstderr:\n{await stderrTask}\n", Encoding.UTF8);
+            if (process.ExitCode == 0)
+            {
+                _status.Text = "Uninstall command completed. Verify the service is removed.";
+                MessageBox.Show(this, $"Uninstall command completed. Verify the device disconnects from the server.\n\nLog: {logPath}",
+                    "Uninstall complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                _status.Text = $"Uninstaller returned exit code {process.ExitCode}.";
+                MessageBox.Show(this, $"Agent returned exit code {process.ExitCode}. See the local log.\n\n{logPath}",
+                    "Uninstall failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Uninstall did not complete.";
+            try { await File.AppendAllTextAsync(logPath, $"[{DateTimeOffset.Now:O}] ERROR: {ex}\n", Encoding.UTF8); } catch { }
+            MessageBox.Show(this, ex.Message, "Uninstall error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally { _install.Enabled = _consent.Checked && File.Exists(_agentPath.Text); _uninstall.Enabled = true; }
+    }
 
     private async Task InstallAgentAsync()
     {
