@@ -36,6 +36,7 @@ jobs:
             bash -n "$script"
           done < <(find customization/deploy/scripts -type f -name '*.sh' -print)
           bash -n docker/entrypoint.sh
+          node --check customization/wispbyte/start.js
 
       - name: Validate Docker Compose configuration
         run: |
