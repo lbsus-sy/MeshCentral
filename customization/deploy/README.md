@@ -13,15 +13,17 @@ curl -fsSL https://raw.githubusercontent.com/lbsus-sy/MeshCentral/custom/ui-depl
 4. Enter the hostname when prompted.
 5. Open `https://your-hostname` and create the first administrator account.
 
-The script installs Docker, downloads this branch, creates the environment file, builds the container and starts MeshCentral. It stops rather than overwriting an existing `/opt/lakers-meshcentral` directory.
+The script installs Docker, downloads this branch, creates the environment file, builds MeshCentral, and starts it behind Caddy. Caddy obtains and renews a public TLS certificate automatically when DNS points to this server and TCP 80/443 are reachable, following [Caddy's automatic HTTPS behavior](https://caddyserver.com/docs/quick-starts/https).
 
 ## Important
 
 - Supports Ubuntu/Debian VPS with public DNS and TCP 80/443 available.
 - This branch is not merged to `master`; the script deploys `custom/ui-deploy-foundation`.
-- The simple Compose setup does **not** automatically issue a publicly trusted TLS certificate. Configure trusted TLS/reverse proxy before exposing sensitive use to the internet; do not treat a browser certificate warning as safe for production.
+- The script stops rather than overwriting an existing `/opt/lakers-meshcentral` directory.
 - Create the first administrator, enable MFA, and keep public account registration disabled.
 - Keep environment files, Docker volumes, server data and certificates private. Back up before updating.
+- If a previous service already occupies ports 80/443, stop it before installing.
+- If certificate issuance fails, verify DNS and firewall settings and check Caddy logs.
 
 ## Commands
 
@@ -29,7 +31,7 @@ Run from `/opt/lakers-meshcentral`:
 
 ```bash
 docker compose -f customization/deploy/compose.yaml --env-file customization/deploy/.env ps
-docker compose -f customization/deploy/compose.yaml --env-file customization/deploy/.env logs -f meshcentral
+docker compose -f customization/deploy/compose.yaml --env-file customization/deploy/.env logs -f
 bash customization/deploy/scripts/backup.sh
 ```
 
