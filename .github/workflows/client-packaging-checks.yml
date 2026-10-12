@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - "customization/client/**"
+      - "customization/tools/**"
       - ".github/workflows/client-packaging-checks.yml"
   push:
     branches:
       - master
     paths:
       - "customization/client/**"
+      - "customization/tools/**"
       - ".github/workflows/client-packaging-checks.yml"
   workflow_dispatch:
 
@@ -17,7 +19,7 @@ permissions:
   contents: read
 
 jobs:
-  build-gui-installer:
+  build-gui-apps:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,20 +29,31 @@ jobs:
           dotnet-version: "8.0.x"
       - name: Build self-contained GUI installer
         run: dotnet publish customization/client/LakersAgentInstaller.csproj -c Release -r win-x64 --self-contained true -o artifacts/installer
-      - name: Validate executable
+      - name: Build self-contained desktop tools
+        run: dotnet publish customization/tools/LakersDesktopTools.csproj -c Release -r win-x64 --self-contained true -o artifacts/desktop-tools
+      - name: Validate executables
         shell: pwsh
         run: |
-          $exe = Get-Item "artifacts/installer/LakersMeshAgentInstaller.exe"
-          if ($exe.Length -lt 1000000) { throw "Published installer is unexpectedly small." }
-          $stream = [System.IO.File]::OpenRead($exe.FullName)
-          try {
-            if ($stream.ReadByte() -ne 0x4D -or $stream.ReadByte() -ne 0x5A) { throw "Output is not a Windows PE executable." }
-          } finally { $stream.Dispose() }
-          Write-Host "Built $($exe.Name), $($exe.Length) bytes. This CI artifact is unsigned."
-      - name: Upload installer artifact
+          foreach ($path in @("artifacts/installer/LakersMeshAgentInstaller.exe", "artifacts/desktop-tools/LakersDesktopTools.exe")) {
+            $exe = Get-Item $path
+            if ($exe.Length -lt 1000000) { throw "$path is unexpectedly small." }
+            $stream = [System.IO.File]::OpenRead($exe.FullName)
+            try {
+              if ($stream.ReadByte() -ne 0x4D -or $stream.ReadByte() -ne 0x5A) { throw "$path is not a Windows PE executable." }
+            } finally { $stream.Dispose() }
+            Write-Host "Built $($exe.Name), $($exe.Length) bytes. CI artifacts are unsigned."
+          }
+      - name: Upload agent installer
         uses: actions/upload-artifact@v4
         with:
           name: LakersMeshAgentInstaller-win-x64
           path: artifacts/installer/LakersMeshAgentInstaller.exe
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload desktop tools
+        uses: actions/upload-artifact@v4
+        with:
+          name: LakersDesktopTools-win-x64
+          path: artifacts/desktop-tools/LakersDesktopTools.exe
           if-no-files-found: error
           retention-days: 14
