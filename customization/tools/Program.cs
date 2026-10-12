@@ -87,6 +87,7 @@ internal sealed class ToolsForm : Form
             using (var key = Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop", writable: true)
                 ?? Registry.CurrentUser.CreateSubKey(@"Control Panel\Desktop"))
             {
+                if (key is null) throw new InvalidOperationException("Unable to open the current user's desktop settings.");
                 key.SetValue("Wallpaper", path, RegistryValueKind.String);
                 key.SetValue("WallpaperStyle", "10", RegistryValueKind.String);
                 key.SetValue("TileWallpaper", "0", RegistryValueKind.String);
@@ -125,11 +126,13 @@ internal sealed class ToolsForm : Form
                 return new { Name = Safe(() => p.ProcessName), Id = p.Id, ExecutablePath = executable, WorkingSetMB = memoryMb };
             }).OrderBy(p => p.Name).ToArray();
 
-            var services = await RunCommandAsync("sc.exe", "query state= all", TimeSpan.FromSeconds(20));
+            var services = await RunCommandAsync("sc.exe", new[] { "query", "state=", "all" }, TimeSpan.FromSeconds(20));
             var systemEvents = await RunCommandAsync("wevtutil.exe",
-                "qe System /q:*[System[(Level=1 or Level=2 or Level=3)]] /c:100 /rd:true /f:text", TimeSpan.FromSeconds(20));
+                new[] { "qe", "System", "/q:*[System[(Level=1 or Level=2 or Level=3)]]", "/c:100", "/rd:true", "/f:text" },
+                TimeSpan.FromSeconds(20));
             var applicationEvents = await RunCommandAsync("wevtutil.exe",
-                "qe Application /q:*[System[(Level=1 or Level=2 or Level=3)]] /c:100 /rd:true /f:text", TimeSpan.FromSeconds(20));
+                new[] { "qe", "Application", "/q:*[System[(Level=1 or Level=2 or Level=3)]]", "/c:100", "/rd:true", "/f:text" },
+                TimeSpan.FromSeconds(20));
 
             var report = new
             {
@@ -161,19 +164,19 @@ internal sealed class ToolsForm : Form
         try { return get(); } catch { return null; }
     }
 
-    private static async Task<object> RunCommandAsync(string fileName, string arguments, TimeSpan timeout)
+    private static async Task<object> RunCommandAsync(string fileName, string[] arguments, TimeSpan timeout)
     {
         try
         {
             var start = new ProcessStartInfo
             {
                 FileName = fileName,
-                Arguments = arguments,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true
             };
+            foreach (var argument in arguments) start.ArgumentList.Add(argument);
             using var process = new Process { StartInfo = start };
             if (!process.Start()) return new { ExitCode = -1, Output = "", Error = "Process could not start." };
             var outputTask = process.StandardOutput.ReadToEndAsync();
