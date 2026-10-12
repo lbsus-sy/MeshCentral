@@ -51,12 +51,15 @@ internal sealed class ToolsForm : Form
         };
         var wallpaper = new Button { Text = "Choose wallpaper…", AutoSize = true, MinimumSize = new Size(170, 38) };
         var diagnostics = new Button { Text = "Collect diagnostics…", AutoSize = true, MinimumSize = new Size(190, 38) };
+        var dumpAnalysis = new Button { Text = "Analyze crash dump…", AutoSize = true, MinimumSize = new Size(190, 38) };
         wallpaper.Click += (_, _) => SetWallpaper();
         diagnostics.Click += async (_, _) => await CollectDiagnosticsAsync();
+        dumpAnalysis.Click += async (_, _) => await AnalyzeDumpAsync();
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, 8, 0, 8) };
         buttons.Controls.Add(wallpaper);
         buttons.Controls.Add(diagnostics);
+        buttons.Controls.Add(dumpAnalysis);
 
         var layout = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(18), AutoScroll = true };
         layout.Controls.Add(title);
@@ -156,6 +159,88 @@ internal sealed class ToolsForm : Form
         {
             _status.Text = "Diagnostics collection failed.";
             MessageBox.Show(this, ex.Message, "Diagnostics error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+
+    private async Task AnalyzeDumpAsync()
+    {
+        using var dumpDialog = new OpenFileDialog
+        {
+            Title = "Select a local Windows crash dump",
+            Filter = "Crash dumps (*.dmp;*.mdmp)|*.dmp;*.mdmp|All files|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dumpDialog.ShowDialog(this) != DialogResult.OK) return;
+
+        using var debuggerDialog = new OpenFileDialog
+        {
+            Title = "Select the Debugging Tools for Windows cdb.exe",
+            Filter = "Console debugger (cdb.exe)|cdb.exe|Executables (*.exe)|*.exe",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (debuggerDialog.ShowDialog(this) != DialogResult.OK) return;
+        if (!string.Equals(Path.GetFileName(debuggerDialog.FileName), "cdb.exe", StringComparison.OrdinalIgnoreCase))
+        {
+            MessageBox.Show(this, "Please select cdb.exe from Microsoft's Debugging Tools for Windows.", "Debugger required",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        using var saveDialog = new SaveFileDialog
+        {
+            Title = "Save local crash analysis output",
+            Filter = "Text report (*.txt)|*.txt",
+            FileName = $"crash-analysis-{DateTime.Now:yyyyMMdd-HHmmss}.txt",
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+            OverwritePrompt = true
+        };
+        if (saveDialog.ShowDialog(this) != DialogResult.OK) return;
+
+        var dumpPath = Path.GetFullPath(dumpDialog.FileName);
+        var outputPath = Path.GetFullPath(saveDialog.FileName);
+        _status.Text = "Analyzing dump locally with cdb.exe…";
+        try
+        {
+            var start = new ProcessStartInfo
+            {
+                FileName = debuggerDialog.FileName,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WorkingDirectory = Path.GetDirectoryName(debuggerDialog.FileName)!
+            };
+            start.ArgumentList.Add("-z");
+            start.ArgumentList.Add(dumpPath);
+            start.ArgumentList.Add("-c");
+            start.ArgumentList.Add("!analyze -v; q");
+            using var process = new Process { StartInfo = start };
+            if (!process.Start()) throw new InvalidOperationException("Unable to start cdb.exe.");
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+            try { await process.WaitForExitAsync(cts.Token); }
+            catch (OperationCanceledException)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                throw new TimeoutException("Dump analysis exceeded five minutes. Try a smaller dump or configure symbols in the debugger.");
+            }
+            var output = await stdoutTask;
+            var error = await stderrTask;
+            await File.WriteAllTextAsync(outputPath,
+                $"Dump: {dumpPath}{Environment.NewLine}Debugger: {debuggerDialog.FileName}{Environment.NewLine}Exit code: {process.ExitCode}{Environment.NewLine}{Environment.NewLine}{output}{Environment.NewLine}STDERR:{Environment.NewLine}{error}",
+                new UTF8Encoding(false));
+            _status.Text = $"Crash analysis saved locally: {outputPath}";
+            MessageBox.Show(this, $"Analysis finished. The report may contain sensitive paths or memory details; review before sharing.\n\n{outputPath}",
+                "Crash analysis complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Crash analysis failed.";
+            MessageBox.Show(this, ex.Message, "Crash analysis error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
