@@ -11,7 +11,6 @@ services:
     environment:
       NODE_ENV: production
       TZ: ${TZ:-Asia/Singapore}
-      # This fork's Compose environment is the source of truth for managed config keys.
       DYNAMIC_CONFIG: "true"
       HOSTNAME: ${MESH_HOSTNAME:?Set MESH_HOSTNAME in customization/deploy/.env}
       PORT: "443"
