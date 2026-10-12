@@ -11,7 +11,8 @@ fi
 if ! grep -qiE 'ubuntu|debian' /etc/os-release; then echo "This one-click installer supports Ubuntu/Debian only."; exit 1; fi
 
 echo "=== Lakers MeshCentral one-click setup ==="
-read -r -p "Enter a DNS hostname pointing to this VPS (e.g. mesh.example.com): " MESH_HOSTNAME
+echo "Before continuing, point your DNS A record at this VPS and allow TCP 80/443 in its firewall."
+read -r -p "Enter the DNS hostname (e.g. mesh.example.com): " MESH_HOSTNAME
 if [[ ! "$MESH_HOSTNAME" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then echo "Invalid hostname. Configure DNS first, then retry." >&2; exit 1; fi
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
@@ -27,8 +28,8 @@ cp customization/deploy/.env.example customization/deploy/.env
 sed -i "s/^MESH_HOSTNAME=.*/MESH_HOSTNAME=$MESH_HOSTNAME/" customization/deploy/.env
 docker compose -f customization/deploy/compose.yaml --env-file customization/deploy/.env up -d --build
 echo
-echo "Install command completed. Open https://$MESH_HOSTNAME"
-echo "Ports TCP 80 and 443 must be allowed in the VPS firewall and DNS must point to this server."
-echo "IMPORTANT: this simple setup does not yet configure a publicly trusted TLS certificate. Do not use it for sensitive production access until trusted TLS is configured."
-echo "Create the first administrator account, enable MFA, and keep account registration disabled."
-echo "Logs: cd $INSTALL_DIR && docker compose -f customization/deploy/compose.yaml --env-file customization/deploy/.env logs -f meshcentral"
+echo "=== Install command completed ==="
+echo "Open https://$MESH_HOSTNAME"
+echo "Caddy will request and renew a trusted HTTPS certificate when DNS and ports 80/443 are reachable."
+echo "Create the first administrator, enable MFA, and keep public account registration disabled."
+echo "Logs: cd $INSTALL_DIR && docker compose -f customization/deploy/compose.yaml --env-file customization/deploy/.env logs -f"
