@@ -18,10 +18,14 @@ If any of those are missing, use Wispbyte only for a landing page and host MeshC
 
 1. Create a Wispbyte **Node.js** app server and check its assigned public URL/port in the panel.
 2. Deploy this repository only if the panel permits GitHub integration or file upload for a Node.js app. Install the repository's production dependencies using the panel's startup/package controls.
-3. Keep `meshcentral-data`, `meshcentral-files`, and backups in storage that survives restarts. Back them up outside the host before upgrading.
-4. Set the app's startup command to the repository's supported MeshCentral startup command and configure the listening port and hostname to match Wispbyte's actual allocation. Do not blindly assume port 443 or port 3000.
+3. Keep `meshcentral-data`, `meshcentral-files`, and backups in storage that survives restarts. Back them up outside the host before upgrading. The launcher writes config under `meshcentral-data`; it does not create persistent storage for you.
+4. Set the startup command to `node customization/wispbyte/start.js`. In Startup, set `PORT` to the internal port assigned by Wispbyte and `MESH_HOSTNAME` to the public hostname (without `https://`). The launcher enables TLS offload for a platform HTTPS proxy, sets the server listener to `PORT`, disables public account creation, applies Lakers branding and preserves the rest of an existing `meshcentral-data/config.json`. Do not guess either value. Back up the data directory before first start or upgrade.
 5. Test browser login, WebSocket remote desktop, file transfer, agent enrollment/reconnect after restart, and data persistence with a disposable test device before using real devices.
 6. Immediately create the first administrator account, enable MFA, disable public account creation, and keep the server patched.
+
+## What the launcher does and does not do
+
+The launcher copies the Lakers CSS into MeshCentral's supported `meshcentral-web/public/styles/custom.css` override directory, then starts the repository's MeshCentral server with the generated/preserved config. It does not provide a platform-level persistent volume or expose missing TCP ports. MeshCentral's Intel AMT/MPS service and any feature requiring a separate raw TCP port may remain unavailable unless Wispbyte explicitly supports those ports. If browser WebSockets or normal agent connections fail, do not try to work around the platform's network controls; move the server to a VPS/VM with the required ports.
 
 ## Current recommendation
 
