@@ -26,7 +26,7 @@ The Compose build context points at this repository root and reuses `docker/Dock
 
 This deployment uses `DYNAMIC_CONFIG=true` so the environment values for hostname, ports, account creation and TLS-offload can be applied on startup. Treat these environment variables as the source of truth for those managed settings. MeshCentral's own `config.json` and data remain in the persistent data volume. Review `customization/deploy/.env.example` before exposing the server.
 
-Direct TLS is the default. For TLS termination at a reverse proxy, configure TLS offload and trusted-proxy settings deliberately to match the actual network topology. The trusted proxy environment setting accepts JSON syntax, such as `["127.0.0.1"]`; do not put a bare IP string there. Publish only the ports needed by your deployment.
+Direct TLS is the default. For TLS termination at a reverse proxy, configure TLS offload and trusted-proxy settings deliberately to match the actual network topology. The trusted proxy environment setting accepts a comma-separated string of trusted IP addresses or domain names, such as `127.0.0.1,proxy.example.com`. Do not use a trust-all setting unless every client reaching the service is trusted. Publish only the ports needed by your deployment.
 
 ## Persistent data and backups
 
