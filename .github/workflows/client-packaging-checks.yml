@@ -1,23 +1,46 @@
-name: Client packaging placeholder checks
+name: Windows GUI client packaging
 
 on:
   pull_request:
     paths:
       - "customization/client/**"
       - ".github/workflows/client-packaging-checks.yml"
+  push:
+    branches:
+      - master
+    paths:
+      - "customization/client/**"
+      - ".github/workflows/client-packaging-checks.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  docs-and-script-syntax:
+  build-gui-installer:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate packaging design files
+      - name: Install .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Build self-contained GUI installer
+        run: dotnet publish customization/client/LakersAgentInstaller.csproj -c Release -r win-x64 --self-contained true -o artifacts/installer
+      - name: Validate executable
         shell: pwsh
         run: |
-          if (-not (Test-Path "customization/client/README.md")) {
-            throw "Missing Windows client packaging design notes."
-          }
-          Get-Content "customization/client/README.md" | Out-Null
+          $exe = Get-Item "artifacts/installer/LakersMeshAgentInstaller.exe"
+          if ($exe.Length -lt 1000000) { throw "Published installer is unexpectedly small." }
+          $stream = [System.IO.File]::OpenRead($exe.FullName)
+          try {
+            if ($stream.ReadByte() -ne 0x4D -or $stream.ReadByte() -ne 0x5A) { throw "Output is not a Windows PE executable." }
+          } finally { $stream.Dispose() }
+          Write-Host "Built $($exe.Name), $($exe.Length) bytes. This CI artifact is unsigned."
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LakersMeshAgentInstaller-win-x64
+          path: artifacts/installer/LakersMeshAgentInstaller.exe
+          if-no-files-found: error
+          retention-days: 14
