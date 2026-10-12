@@ -1,3 +1,3 @@
 # Brand assets
 
-Place original product logo, favicon, and approved artwork in this directory. Keep UI overrides additive and version-aware; do not replace the upstream remote-control/authentication code for visual changes.
+The `web/` directory is mounted read-only to `/opt/meshcentral/meshcentral-web`. MeshCentral loads the CSS override from `web/public/styles/custom.css` after its default stylesheets. Place custom image overrides under `web/public/images/` and preserve upstream-required names and dimensions.
