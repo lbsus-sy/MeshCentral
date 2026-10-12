@@ -10,7 +10,7 @@ On a Windows machine with the .NET 8 SDK:
 dotnet publish .\customization\client\LakersAgentInstaller.csproj -c Release -r win-x64 --self-contained true -o .\artifacts\installer
 ```
 
-The resulting `LakersMeshAgentInstaller.exe` is a single-file, self-contained x64 GUI app. GitHub Actions also builds this artifact for review. The binary is not Authenticode-signed by this repository; Windows SmartScreen may show an unknown-publisher warning until a trusted code-signing certificate and release-signing process are configured.
+The resulting `LakersMeshAgentInstaller.exe` is a single-file, self-contained x64 GUI app. GitHub Actions is configured to build this artifact for review; check the workflow result before assuming a successful build. The binary is not Authenticode-signed by this repository; Windows SmartScreen may show an unknown-publisher warning until a trusted code-signing certificate and release-signing process are configured.
 
 ## Install an agent
 
