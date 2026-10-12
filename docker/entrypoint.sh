@@ -225,23 +225,16 @@ function dynamic_config() {
         sed -i 's/"certUrl":/"_certUrl":/g' "$CONFIG_FILE"
     fi
 
-    # trustedProxy
+    # trustedProxy is a comma-separated string of trusted proxy IPs/domains.
     if [[ -n "$TRUSTED_PROXY" ]]; then
         echo "Setting trustedProxy... - $TRUSTED_PROXY"
 
-        if [[ "$TRUSTED_PROXY" == "all" ]] || [[ "$TRUSTED_PROXY" == "true" ]]; then
-            sed -i 's/"_trustedProxy"/"trustedProxy"/' "$CONFIG_FILE"
-            jq --argjson trusted_proxy "true" \
-                '.settings.trustedProxy = $trusted_proxy' \
-                "$CONFIG_FILE" > temp_config.json && mv temp_config.json "$CONFIG_FILE"
-        else
-            sed -i 's/"_trustedProxy"/"trustedProxy"/' "$CONFIG_FILE"
-            jq --argjson trusted_proxy "$TRUSTED_PROXY" \
-                '.settings.trustedProxy = $trusted_proxy' \
-                "$CONFIG_FILE" > temp_config.json && mv temp_config.json "$CONFIG_FILE"
-        fi
+        sed -i 's/"_trustedProxy"/"trustedProxy"/' "$CONFIG_FILE"
+        jq --arg trusted_proxy "$TRUSTED_PROXY" \
+            '.settings.trustedProxy = $trusted_proxy' \
+            "$CONFIG_FILE" > temp_config.json && mv temp_config.json "$CONFIG_FILE"
     else
-        echo "Invalid or no TRUSTED_PROXY value given, commenting out so default applies... Value(s) given: ${TRUSTED_PROXY:-empty}"
+        echo "TRUSTED_PROXY is empty; leaving the setting disabled."
         sed -i 's/"trustedProxy":/"_trustedProxy":/g' "$CONFIG_FILE"
     fi
 
