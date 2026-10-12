@@ -23,12 +23,15 @@ function normalizeHostname(value) {
 
 const hostCandidates = [
     process.env.MESH_HOSTNAME,
+    process.env.PUBLIC_HOSTNAME,
+    process.env.EXTERNAL_HOSTNAME,
+    process.env.APP_HOSTNAME,
+    process.env.SERVER_DOMAIN,
     process.env.PUBLIC_URL,
     process.env.APP_URL,
     process.env.RENDER_EXTERNAL_URL,
     process.env.RAILWAY_PUBLIC_DOMAIN,
-    process.env.FLY_PUBLIC_IP ? process.env.FLY_APP_NAME : '',
-    process.env.HOSTNAME
+    process.env.FLY_APP_NAME ? `${process.env.FLY_APP_NAME}.fly.dev` : ''
 ];
 const hostname = hostCandidates.map(normalizeHostname).find(Boolean) || '';
 
@@ -49,13 +52,18 @@ config.settings ||= {};
 config.domains ||= {};
 config.domains[''] ||= {};
 
+// If the platform publishes a stable proxy IP, set MESH_TRUSTED_PROXY to it.
+// Otherwise true assumes the host isolates the origin listener behind its HTTPS
+// proxy; do not use this mode if users can reach the origin directly.
+const trustedProxy = String(process.env.MESH_TRUSTED_PROXY || process.env.TRUSTED_PROXY || '').trim();
+
 // Apply only deployment-critical settings. Preserve the rest of the existing
 // configuration so restarting the app does not reset administrator settings.
 Object.assign(config.settings, {
     cert: hostname,
     port: publicPort,
     redirPort: 0,
-    tlsOffload: true,
+    tlsOffload: trustedProxy || true,
     WANonly: true
 });
 Object.assign(config.domains[''], {
@@ -83,6 +91,7 @@ fs.copyFileSync(cssSource, cssTarget);
 
 console.log('Starting MeshCentral with the Lakers theme.');
 console.log('The runtime port and detected public hostname are configured; values are not printed.');
+if (!trustedProxy) console.warn('MESH_TRUSTED_PROXY is unset: TLS offload assumes the host prevents direct access to the origin listener.');
 console.log('Verify persistent storage and agent/WebSocket connectivity before enrolling real devices.');
 
 const child = spawn(process.execPath, [
