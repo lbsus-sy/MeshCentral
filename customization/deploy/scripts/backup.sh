@@ -43,12 +43,13 @@ if [[ -z "$volume_ids" ]]; then
   exit 1
 fi
 
+project_name="$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$container_id")"
 tmp="$(mktemp -d)"
 while IFS= read -r vol; do
   [[ -z "$vol" ]] && continue
-  actual="$(docker volume ls --format '{{.Name}}' | grep -E "(^|_)${vol}$" | head -n1 || true)"
+  actual="$(docker volume ls --filter "label=com.docker.compose.project=$project_name" --filter "label=com.docker.compose.volume=$vol" --format '{{.Name}}' | head -n1 || true)"
   if [[ -z "$actual" ]]; then
-    echo "Warning: volume for logical name '$vol' not found; skipping." >&2
+    echo "Warning: Compose volume '$vol' for project '$project_name' not found; skipping." >&2
     continue
   fi
   mkdir -p "$tmp/$vol"
