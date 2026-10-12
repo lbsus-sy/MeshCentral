@@ -225,36 +225,44 @@ function dynamic_config() {
         sed -i 's/"certUrl":/"_certUrl":/g' "$CONFIG_FILE"
     fi
 
-    # trustedProxy
+    # trustedProxy is a comma-separated string of trusted proxy IPs/domains.
     if [[ -n "$TRUSTED_PROXY" ]]; then
         echo "Setting trustedProxy... - $TRUSTED_PROXY"
 
+        sed -i 's/"_trustedProxy"/"trustedProxy"/' "$CONFIG_FILE"
         if [[ "$TRUSTED_PROXY" == "all" ]] || [[ "$TRUSTED_PROXY" == "true" ]]; then
-            sed -i 's/"_trustedProxy"/"trustedProxy"/' "$CONFIG_FILE"
+            # Preserve the existing explicit trust-all compatibility switch.
             jq --argjson trusted_proxy "true" \
                 '.settings.trustedProxy = $trusted_proxy' \
                 "$CONFIG_FILE" > temp_config.json && mv temp_config.json "$CONFIG_FILE"
         else
-            sed -i 's/"_trustedProxy"/"trustedProxy"/' "$CONFIG_FILE"
-            jq --argjson trusted_proxy "$TRUSTED_PROXY" \
+            jq --arg trusted_proxy "$TRUSTED_PROXY" \
                 '.settings.trustedProxy = $trusted_proxy' \
                 "$CONFIG_FILE" > temp_config.json && mv temp_config.json "$CONFIG_FILE"
         fi
     else
-        echo "Invalid or no TRUSTED_PROXY value given, commenting out so default applies... Value(s) given: ${TRUSTED_PROXY:-empty}"
+        echo "TRUSTED_PROXY is empty; leaving the setting disabled."
         sed -i 's/"trustedProxy":/"_trustedProxy":/g' "$CONFIG_FILE"
     fi
 
-    # tlsOffload
-    if [[ -n "$TLS_OFFLOAD" ]]; then
-        echo "Setting tlsOffload... - $TLS_OFFLOAD"
+    # tlsOffload: accept boolean values or an explicit trusted proxy address.
+    TLS_OFFLOAD=${TLS_OFFLOAD,,}
+    if [[ "$TLS_OFFLOAD" =~ ^(true|false)$ ]]; then
+        echo "Setting tlsOffload boolean... - $TLS_OFFLOAD"
+
+        sed -i 's/"_tlsOffload"/"tlsOffload"/' "$CONFIG_FILE"
+        jq --argjson tls_offload "$TLS_OFFLOAD" \
+            '.settings.tlsOffload = $tls_offload' \
+            "$CONFIG_FILE" > temp_config.json && mv temp_config.json "$CONFIG_FILE"
+    elif [[ -n "$TLS_OFFLOAD" ]]; then
+        echo "Setting tlsOffload trusted proxy address... - $TLS_OFFLOAD"
 
         sed -i 's/"_tlsOffload"/"tlsOffload"/' "$CONFIG_FILE"
         jq --arg tls_offload "$TLS_OFFLOAD" \
             '.settings.tlsOffload = $tls_offload' \
             "$CONFIG_FILE" > temp_config.json && mv temp_config.json "$CONFIG_FILE"
     else
-        echo "Invalid or no TLS_OFFLOAD value given, commenting out so default applies... Value(s) given: ${TLS_OFFLOAD:-empty}"
+        echo "TLS_OFFLOAD is empty; leaving the setting disabled."
         sed -i 's/"tlsOffload":/"_tlsOffload":/g' "$CONFIG_FILE"
     fi
 
@@ -301,7 +309,7 @@ function dynamic_config() {
         sed -i 's/"minify":/"_minify":/g' "$CONFIG_FILE"
     fi
 
-    cat "$CONFIG_FILE"
+    echo "Dynamic configuration applied; config contents omitted from logs."
 }
 
 function install_stylishui() {

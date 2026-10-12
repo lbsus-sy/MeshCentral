@@ -1,0 +1,4 @@
+{$MESH_HOSTNAME} {
+    encode zstd gzip
+    reverse_proxy meshcentral:443
+}

@@ -1,0 +1,48 @@
+name: Customization validation
+
+on:
+  pull_request:
+    paths:
+      - ".dockerignore"
+      - "docker/entrypoint.sh"
+      - "customization/**"
+      - ".github/workflows/customization-validation.yml"
+  push:
+    branches:
+      - master
+    paths:
+      - ".dockerignore"
+      - "docker/entrypoint.sh"
+      - "customization/**"
+      - ".github/workflows/customization-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check shell syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r script; do
+            bash -n "$script"
+          done < <(find customization/deploy/scripts -type f -name '*.sh' -print)
+          bash -n docker/entrypoint.sh
+          node --check customization/wispbyte/start.js
+
+      - name: Validate Docker Compose configuration
+        run: |
+          cp customization/deploy/.env.example customization/deploy/.env
+          docker compose -f customization/deploy/compose.yaml --env-file customization/deploy/.env config --quiet
+
+      - name: Check whitespace errors
+        if: github.event_name == 'pull_request'
+        run: git diff --check "origin/${{ github.base_ref }}...HEAD"
