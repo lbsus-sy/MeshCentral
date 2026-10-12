@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-COMPOSE_FILE="${COMPOSE_FILE:-deploy/compose.yaml}"
-ENV_FILE="${ENV_FILE:-deploy/.env}"
+COMPOSE_FILE="${COMPOSE_FILE:-customization/deploy/compose.yaml}"
+ENV_FILE="${ENV_FILE:-customization/deploy/.env}"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "Error: docker CLI not found." >&2
   exit 1
 fi
 if [[ ! -f "$ENV_FILE" ]]; then
-  echo "Missing $ENV_FILE. Copy deploy/.env.example and configure it first." >&2
+  echo "Missing $ENV_FILE. Copy customization/deploy/.env.example and configure it first." >&2
   exit 1
 fi
 
