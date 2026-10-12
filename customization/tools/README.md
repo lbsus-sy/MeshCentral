@@ -20,7 +20,7 @@ On Windows with .NET 8 SDK:
 dotnet publish .\customization\tools\LakersDesktopTools.csproj -c Release -r win-x64 --self-contained true -o .\artifacts\desktop-tools
 ```
 
-GitHub Actions builds a single-file, self-contained `LakersDesktopTools.exe` artifact. The binary is unsigned until a trusted code-signing release process is configured.
+GitHub Actions is configured to build a single-file, self-contained `LakersDesktopTools.exe` artifact; check the workflow result before assuming a successful build. The binary is unsigned until a trusted code-signing release process is configured.
 
 ## PowerShell helpers
 
